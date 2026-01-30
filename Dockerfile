@@ -1,11 +1,13 @@
-# Use Node.js base image
 FROM node:18-alpine
 
-# Install Python, yt-dlp, and FFmpeg
-RUN apk add --no-cache python3 py3-pip ffmpeg
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    ffmpeg
 
 # Install yt-dlp
-RUN pip3 install --break-system-packages yt-dlp
+RUN pip3 install --upgrade yt-dlp
 
 # Set working directory
 WORKDIR /app
@@ -14,16 +16,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production
 
-# Copy all files
+# Copy application files
 COPY . .
 
-# Build Next.js app
+# Build the application
 RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
-# Start the app
+# Start the application
 CMD ["npm", "start"]

@@ -15,11 +15,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get video info
-    const { stdout } = await execAsync(
-      `yt-dlp --dump-json --no-playlist "${url}"`,
-      { windowsHide: true, timeout: 15000 }
+    // Simple URL validation
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      return NextResponse.json(
+        { error: 'Please enter a valid YouTube URL' },
+        { status: 400 }
+      )
+    }
+
+    // Get video info with cookie support
+    const { stdout, stderr } = await execAsync(
+      `yt-dlp --dump-json --no-playlist --cookies-from-browser chrome "${url}"`,
+      { 
+        windowsHide: true, 
+        timeout: 15000,
+        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+      }
     )
+
+    if (stderr) {
+      console.error('yt-dlp stderr:', stderr)
+    }
     
     const videoData = JSON.parse(stdout)
 
@@ -32,14 +48,17 @@ export async function POST(request: NextRequest) {
     console.error('Error fetching video info:', error)
     
     let errorMessage = 'Failed to fetch video information'
-    if (error.message.includes('Video unavailable')) {
-      errorMessage = 'This video is unavailable'
+    
+    if (error.message.includes('Sign in')) {
+      errorMessage = 'This video requires sign in or is age-restricted. Please use a public video.'
     } else if (error.message.includes('Private video')) {
       errorMessage = 'This is a private video'
-    } else if (error.message.includes('Sign in')) {
-      errorMessage = 'This video requires sign in'
+    } else if (error.message.includes('Video unavailable')) {
+      errorMessage = 'This video is unavailable'
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Request timed out. Please try again.'
+    } else if (error.message.includes('yt-dlp')) {
+      errorMessage = 'YouTube download service is currently unavailable. Please try again later.'
     }
 
     return NextResponse.json(
