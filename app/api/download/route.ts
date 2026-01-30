@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     let videoTitle = 'audio'
     try {
       const { stdout: infoOutput } = await execAsync(
-        `yt-dlp --get-title --no-playlist --cookies-from-browser chrome "${url}"`,
-        { windowsHide: true }
+        `yt-dlp --get-title --no-playlist "${url}"`,
+        { windowsHide: true, timeout: 10000 }
       )
       videoTitle = infoOutput.trim()
         .replace(/[<>:"/\\|?*]/g, '_')
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
 
     const outputTemplate = path.join(tmpDir, 'audio')
 
-    // Download as MP3 with high quality - use cookies for authentication
-    const command = `yt-dlp -x --audio-format mp3 --audio-quality 0 --cookies-from-browser chrome --output "${outputTemplate}.%(ext)s" --no-playlist "${url}"`
+    // Download as MP3 with high quality - simple command
+    const command = `yt-dlp -x --audio-format mp3 --audio-quality 0 --output "${outputTemplate}.%(ext)s" --no-playlist "${url}"`
 
     console.log('Download command:', command)
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (stderr) {
       console.error('Download stderr:', stderr)
       // Check if it's a sign-in error
-      if (stderr.includes('Sign in')) {
+      if (stderr.includes('Sign in') || stderr.includes('sign in')) {
         throw new Error('This video requires sign in or is age-restricted. Please use a public video.')
       }
     }
@@ -79,20 +79,10 @@ export async function POST(request: NextRequest) {
     )
 
     if (!mp3File) {
-      // Try to find any audio file
-      const audioFile = files.find(f => 
-        (f.includes('.mp3') || f.includes('.webm') || f.includes('.m4a')) && 
-        !f.endsWith('.part')
-      )
-      
-      if (!audioFile) {
-        throw new Error('Could not find downloaded audio file')
-      }
-      
-      outputPath = path.join(tmpDir, audioFile)
-    } else {
-      outputPath = path.join(tmpDir, mp3File)
+      throw new Error('Could not find downloaded audio file')
     }
+    
+    outputPath = path.join(tmpDir, mp3File)
 
     // Verify file
     if (!existsSync(outputPath)) {
@@ -126,7 +116,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('Download error:', error)
+    console.error('Download error:', error.message)
     
     // Clean up on error
     if (tmpDir && existsSync(tmpDir)) {
@@ -135,14 +125,14 @@ export async function POST(request: NextRequest) {
 
     // User-friendly error messages
     let errorMessage = 'Failed to convert video to MP3'
-    if (error.message.includes('Sign in')) {
+    if (error.message.includes('Sign in') || error.message.includes('sign in')) {
       errorMessage = 'This video requires sign in or is age-restricted. Please use a public video.'
     } else if (error.message.includes('Private video')) {
       errorMessage = 'This is a private video'
     } else if (error.message.includes('Video unavailable')) {
       errorMessage = 'This video is unavailable'
-    } else if (error.message.includes('yt-dlp')) {
-      errorMessage = 'YouTube download service is currently unavailable.'
+    } else if (error.message.includes('yt-dlp') || error.message.includes('command not found')) {
+      errorMessage = 'YouTube download service is currently unavailable. Please try again later.'
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Download timeout. The video might be too long or the server is busy.'
     }

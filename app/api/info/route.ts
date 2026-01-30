@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get video info with cookie support
+    // Get video info with simple command
     const { stdout, stderr } = await execAsync(
-      `yt-dlp --dump-json --no-playlist --cookies-from-browser chrome "${url}"`,
+      `yt-dlp --dump-json --no-playlist "${url}"`,
       { 
         windowsHide: true, 
-        timeout: 15000,
+        timeout: 30000,
         maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       }
     )
@@ -45,19 +45,19 @@ export async function POST(request: NextRequest) {
       duration: formatDuration(videoData.duration || 0),
     })
   } catch (error: any) {
-    console.error('Error fetching video info:', error)
+    console.error('Error fetching video info:', error.message)
     
     let errorMessage = 'Failed to fetch video information'
     
-    if (error.message.includes('Sign in')) {
-      errorMessage = 'This video requires sign in or is age-restricted. Please use a public video.'
+    if (error.message.includes('Sign in') || error.message.includes('sign in')) {
+      errorMessage = 'This video is age-restricted or private. Please try a public video.'
     } else if (error.message.includes('Private video')) {
       errorMessage = 'This is a private video'
     } else if (error.message.includes('Video unavailable')) {
       errorMessage = 'This video is unavailable'
     } else if (error.message.includes('timeout')) {
       errorMessage = 'Request timed out. Please try again.'
-    } else if (error.message.includes('yt-dlp')) {
+    } else if (error.message.includes('yt-dlp') || error.message.includes('command not found')) {
       errorMessage = 'YouTube download service is currently unavailable. Please try again later.'
     }
 
@@ -87,5 +87,5 @@ function getBestThumbnail(videoData: any): string {
     return sorted[0].url
   }
   
-  return ''
+  return 'https://img.youtube.com/vi/default/maxresdefault.jpg'
 }

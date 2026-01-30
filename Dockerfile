@@ -1,14 +1,14 @@
 FROM node:18-alpine
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apk update && apk add --no-cache \
     python3 \
     py3-pip \
     ffmpeg \
-    yt-dlp
-
-# Verify installation
-RUN yt-dlp --version
+    curl \
+    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp \
+    && yt-dlp -U
 
 # Set working directory
 WORKDIR /app
@@ -17,8 +17,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY package-lock.json ./
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm ci
+# Install dependencies
+RUN npm install
 
 # Copy application files
 COPY . .
