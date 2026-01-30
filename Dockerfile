@@ -4,10 +4,12 @@ FROM node:18-alpine
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    ffmpeg
+    ffmpeg \
+    yt-dlp
 
-# Install yt-dlp
-RUN pip3 install --upgrade yt-dlp
+# Create a virtual environment for Python packages (if needed for other packages)
+# RUN python3 -m venv /opt/venv
+# ENV PATH="/opt/venv/bin:$PATH"
 
 # Set working directory
 WORKDIR /app
@@ -15,7 +17,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install Node.js dependencies
 RUN npm ci --only=production
 
 # Copy application files
