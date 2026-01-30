@@ -1,21 +1,24 @@
 FROM node:18-alpine
 
-# Install dependencies including yt-dlp as standalone binary
+# Install system dependencies
 RUN apk add --no-cache \
     python3 \
+    py3-pip \
     ffmpeg \
-    curl \
-    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
-    && chmod a+rx /usr/local/bin/yt-dlp
+    yt-dlp
+
+# Verify installation
+RUN yt-dlp --version
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY package-lock.json ./
 
-# Install Node.js dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy application files
 COPY . .
